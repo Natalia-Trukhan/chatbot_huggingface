@@ -37,8 +37,9 @@ class WebSearch:
                         "snippet": item.get("body", "").strip(),
                     })
             return results
-        except Exception:
-            # Return empty list on any search error
+        except Exception as exc:
+            # Log search error and return an empty list
+            print(f"Помилка пошуку ({type(exc).__name__}): {exc}")
             return []
 
     def _is_valid_http_url(self, url: str) -> bool:
@@ -65,10 +66,8 @@ class WebSearch:
             if "text/html" not in content_type and "application/xhtml+xml" not in content_type:
                 return ""
 
-            # Fix encoding issues when server does not specify UTF-8 explicitly
-            response.encoding = response.apparent_encoding or "utf-8"
-
-            soup = BeautifulSoup(response.text, "html.parser")
+            # Pass raw bytes so BeautifulSoup handles UTF-8 / page charset properly
+            soup = BeautifulSoup(response.content, "html.parser")
             # Remove non-content elements like scripts, styles, headers, and footers
             for tag in soup(["script", "style", "nav", "footer", "header", "aside", "noscript", "form"]):
                 tag.decompose()
@@ -76,20 +75,27 @@ class WebSearch:
             lines = [line.strip() for line in soup.get_text(separator="\n").splitlines() if line.strip()]
             cleaned_text = "\n".join(lines)
             return cleaned_text[:self.MAX_CHARS]
-        except Exception as e:
-            print(f"Помилка пошуку ({type(e).__name__}): {e}")
-            return []
+        except Exception as exc:
+            # Return an empty string on any page fetching or parsing error
+            print(f"Помилка читання сторінки ({type(exc).__name__}): {exc}")
+            return ""
 
 
 if __name__ == "__main__":
+    # 1. Create a WebSearch instance
     searcher = WebSearch()
+
+    # 2. Perform a search for a sample query
     query = "Python документація"
     found = searcher.search(query)
     print(f"Знайдено результатів: {len(found)}")
 
+    # 3–5. Get a result URL, fetch the page, and print the extracted text
     if found:
-        first_url = found[0]["url"]
-        print(f"Перший URL: {first_url}")
-        page_content = searcher.read_page(first_url)
-        print("Вміст сторінки (початок):")
-        print(page_content[:1000] if page_content else "Текст не вдалося отримати.")
+        selected_url = found[0]["url"]
+        print(f"Обраний URL: {selected_url}\n")
+        page_content = searcher.read_page(selected_url)
+        print("Вміст сторінки:")
+        print(page_content if page_content else "Текст сторінки не вдалося отримати.")
+    else:
+        print("Результатів пошуку не знайдено.")
