@@ -74,7 +74,7 @@ class BotWeb:
         with torch.inference_mode():
             outputs = self.model.generate(
                 **inputs,
-                max_new_tokens=300,
+                max_new_tokens=3000,
                 do_sample=False,
                 pad_token_id=pad_id,
             )
